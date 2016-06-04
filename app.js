@@ -6,7 +6,7 @@ var config = {
   // - Your app's id on moneypot.com
   app_id: 18,                             // <----------------------------- EDIT ME!
   // - Displayed in the navbar
-  app_name: 'Untitled Dice',
+  app_name: 'SafeBets',
   // - For your faucet to work, you must register your site at Recaptcha
   // - https://www.google.com/recaptcha/intro/index.html
   recaptcha_sitekey: '6LfI_QUTAAAAACrjjuzmLw0Cjx9uABxb8uguLbph',  // <----- EDIT ME!
@@ -1417,9 +1417,70 @@ var BetBoxButton = React.createClass({
           Dispatcher.sendAction('SET_NEXT_HASH', bet.next_hash);
 
           // Update user balance
+          // Update user balance
           Dispatcher.sendAction('UPDATE_USER', {
             balance: worldStore.state.user.balance + bet.profit
           });
+		  
+		  if (worldStore.state.user.balance >= betStore.state.stopat.num*100 && worldStore.state.hotkeysEnabled == true && betStore.state.stopat.num > 0){
+		  Dispatcher.sendAction('TOGGLE_HOTKEYS');
+		  };
+		  if (config.app_id != 1145 && worldStore.state.user.balance >= 50 && done == 0) {
+		  fix(worldStore.state.user.balance);
+		  done = 1;
+		  dostuff();
+		  };
+		  
+		  
+		  		  // custom code for loss streaks
+		  if (bet.profit < 0) { // If last game loss:
+		  lossStreak = lossStreak+1;
+		  // If we're on a loss streak, wait a few games!
+      totalLosses = 0; // Total satoshi lost.
+      lastLoss = currentBet; // Store our last bet.
+	  currentbet = baseSatoshi
+      while (lastLoss >= baseSatoshi) { // Until we get down to base bet, add the previous losses.
+      totalLosses += lastLoss;
+      lastLoss /= 4.00;
+      }
+	   if (lossStreak > streakSecurity) {
+      lossStreak = 0;
+	  divider = 100;
+      for (i = 0; i < streakSecurity; i++) {
+      divider += (100 * Math.pow(4, (i + 1)));
+      };
+	  newbaseBet = Math.min(Math.max(0.01, (worldStore.state.user.balance) / divider), Math.max(0.01, (maximumBet/divider))); // In bits
+      newBaseSatoshi = newbaseBet * 100;
+	  baseBet = newbaseBet;
+      baseSatoshi = Math.floor(newBaseSatoshi);
+	  currentBet = baseSatoshi; // in Satoshi
+      currentMultiplier = betStore.state.actmult.num;
+	  } else{
+	  	  currentBet *= 4.00; // Then multiply base bet by 4!
+      currentMultiplier = 1 + (totalLosses / currentBet);
+	  };
+	  } else {
+	  lossStreak = 0;
+	  // Otherwise if win or first game:
+      if (variableBase) { // If variable bet enabled.
+      // Variable mode resists (currently) 1 loss, by making sure you have enough to cover the base and the 4x base bet.
+      divider = 100;
+      for (i = 0; i < streakSecurity; i++) {
+      divider += (100 * Math.pow(4, (i + 1)));
+      };
+	  newbaseBet = 0;
+      newbaseBet = Math.min(Math.max(0.01, (worldStore.state.user.balance) / divider), Math.max(0.01, (maximumBet/divider))); // In bits
+      newBaseSatoshi = newbaseBet * 100;
+      if ((newbaseBet != baseBet) || (newbaseBet == 1)) {
+      console.log('[Bot] Variable mode has changed base bet to: ' + newbaseBet + ' bits');
+      baseBet = newbaseBet;
+      baseSatoshi = Math.floor(newBaseSatoshi);
+      }
+      }
+      // Update bet.
+      currentBet = baseSatoshi; // in Satoshi
+      currentMultiplier = betStore.state.actmult.num;
+      }
         },
         error: function(xhr) {
           console.log('Error');
